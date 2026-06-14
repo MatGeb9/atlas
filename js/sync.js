@@ -59,7 +59,9 @@ export async function exportBackup(passphrase) {
   try {
     const json = await buildBackupPayload(passphrase);
     const stamp = new Date().toISOString().slice(0, 10);
-    const blob = new Blob([json], { type: 'application/json' });
+    // octet-stream (binaire générique) : sinon iOS force l'extension .json
+    // d'après le type MIME et ignore le « .atlas » du nom de fichier.
+    const blob = new Blob([json], { type: 'application/octet-stream' });
     downloadBlob(blob, `atlas-${stamp}.atlas`);
     toast(passphrase ? 'Sauvegarde chiffrée exportée' : 'Sauvegarde exportée (non chiffrée)',
       passphrase ? 'ok' : 'info');
