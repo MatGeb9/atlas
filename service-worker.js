@@ -1,4 +1,4 @@
-const CACHE = 'atlas-v10';
+const CACHE = 'atlas-v11';
 const ASSETS = [
   './',
   './index.html',
@@ -43,22 +43,29 @@ self.addEventListener('activate', (e) => {
 
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
-  // On ne met en cache que le même origine (les API externes restent en ligne).
-  const sameOrigin = new URL(e.request.url).origin === location.origin;
-  if (!sameOrigin) return; // laisse passer Nominatim / esm.sh / Supabase normalement
+  const url = new URL(e.request.url);
+  if (url.origin !== location.origin) return; // externes (Nominatim/esm.sh/Supabase) en direct
+
+  // Vendor (moteur, textures, geojson) : gros et statiques → cache-first.
+  if (url.pathname.includes('/vendor/')) {
+    e.respondWith(caches.open(CACHE).then((cache) =>
+      cache.match(e.request).then((cached) => cached || fetch(e.request).then((resp) => {
+        if (resp.ok && resp.type === 'basic') cache.put(e.request, resp.clone());
+        return resp;
+      }))));
+    return;
+  }
+
+  // App (HTML/JS/CSS) : RÉSEAU D'ABORD → toujours la dernière version en ligne,
+  // repli sur le cache hors-ligne. Évite de rester bloqué sur une vieille version.
   e.respondWith(
-    caches.open(CACHE).then((cache) =>
-      cache.match(e.request).then((cached) => {
-        const fetched = fetch(e.request).then((resp) => {
-          // On ne (re)cache que des réponses propres, non redirigées (évite
-          // l'empoisonnement du cache et le bug 'redirected' en navigation).
-          if (resp.ok && !resp.redirected && resp.type === 'basic') {
-            cache.put(e.request, resp.clone());
-          }
-          return resp;
-        }).catch(() => cached);
-        return cached || fetched;
-      })
-    )
+    fetch(e.request).then((resp) => {
+      if (resp.ok && !resp.redirected && resp.type === 'basic') {
+        const clone = resp.clone();
+        caches.open(CACHE).then((cache) => cache.put(e.request, clone));
+      }
+      return resp;
+    }).catch(() => caches.open(CACHE).then((cache) =>
+      cache.match(e.request).then((c) => c || (e.request.mode === 'navigate' ? cache.match('./index.html') : Response.error()))))
   );
 });
