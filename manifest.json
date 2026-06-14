@@ -1,0 +1,17 @@
+{
+  "name": "Atlas — Carnet & Globe",
+  "short_name": "Atlas",
+  "description": "Carnet de souvenirs géolocalisés sur un globe 3D.",
+  "id": "atlas",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0C0B16",
+  "theme_color": "#1B1A2E",
+  "lang": "fr",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

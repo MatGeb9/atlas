@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' blob: data:; connect-src 'self' https://nominatim.openstreetmap.org https://esm.sh https://*.supabase.co wss://*.supabase.co; script-src 'self' https://esm.sh; style-src 'self' 'unsafe-inline'; worker-src 'self' blob:; object-src 'none'; base-uri 'none'" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#1B1A2E" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Atlas" />
+  <title>Atlas</title>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+  <link rel="icon" href="./icon-192.png" />
+  <link rel="stylesheet" href="./style.css" />
+  <!-- Moteur de globe (three.js inclus) — exposé en global window.Globe -->
+  <script src="./vendor/globe.gl.min.js"></script>
+</head>
+<body class="theme-dark">
+  <div id="app">
+    <!-- Globe en fond -->
+    <div id="view-globe" class="view-globe">
+      <div id="globe" class="globe"></div>
+    </div>
+
+    <!-- Vue liste (recouvre le globe) -->
+    <div id="view-list" class="view-list"></div>
+
+    <!-- Vue dashboard (recouvre le globe) -->
+    <div id="view-dashboard" class="view-dashboard"></div>
+
+    <!-- Barre du haut -->
+    <header id="topbar" class="topbar">
+      <div class="topbar__brand">
+        <span class="topbar__logo">🌍</span>
+        <span class="topbar__title">Atlas</span>
+      </div>
+      <div class="topbar__search">
+        <input id="search" type="search" placeholder="Rechercher (nom, lieu, tag…)" autocomplete="off" />
+      </div>
+      <div class="topbar__actions">
+        <div class="seg">
+          <button id="btn-globe" class="seg__btn is-active" title="Globe">🌍</button>
+          <button id="btn-list" class="seg__btn" title="Liste">▦</button>
+          <button id="btn-dashboard" class="seg__btn" title="Dashboard">📊</button>
+        </div>
+        <button id="btn-add" class="btn btn--primary btn--round" title="Nouvelle fiche">+</button>
+        <button id="btn-settings" class="btn btn--icon" title="Réglages">⚙️</button>
+      </div>
+    </header>
+
+    <!-- Panneau latéral (formulaire / détail / réglages) -->
+    <div id="panel-overlay" class="panel-overlay"></div>
+    <aside id="panel" class="panel">
+      <div class="panel__header">
+        <h2 id="panel-title" class="panel__title">Atlas</h2>
+        <button id="panel-close" class="panel__close" title="Fermer">✕</button>
+      </div>
+      <div id="panel-body" class="panel__body"></div>
+    </aside>
+
+    <div id="toasts" class="toasts"></div>
+  </div>
+
+  <script type="module" src="./js/main.js"></script>
+</body>
+</html>
