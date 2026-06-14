@@ -220,6 +220,7 @@ export async function syncNow(password) {
       if (localP && (localP.updatedAt || '') >= (r.updated_at || '')) continue;
       const oldPhotoId = localP && localP.photoId;
       const person = r.data;
+      person.thumbId = null; // la sync ne transfère que la pleine résolution → thumbUrl repli sur photoId
       if (r.photo) {
         const blob = await dataURLToBlob(r.photo);
         person.photoId = await db.putPhoto(blob, 'image/jpeg');

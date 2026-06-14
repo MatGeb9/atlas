@@ -30,7 +30,8 @@ export function newPerson() {
   return {
     id,
     name: '',
-    photoId: null,
+    photoId: null,       // photo pleine résolution (détail / visionneuse)
+    thumbId: null,       // miniature 256px (globe, cartes, avatars)
     origin: null,        // { label, lat, lng }
     metPlace: null,      // { label, lat, lng }
     places: [],          // [{ label, lat, lng, note }]
@@ -90,6 +91,13 @@ export function photoUrl(photoId) {
   return photoId ? _photoUrls.get(photoId) || null : null;
 }
 
+/** Miniature pour les petits rendus (globe/cartes/avatars) ; repli sur la pleine
+ *  résolution pour les fiches anciennes sans miniature. */
+export function thumbUrl(person) {
+  if (!person) return null;
+  return photoUrl(person.thumbId) || photoUrl(person.photoId);
+}
+
 function revokeAllPhotoUrls() {
   for (const url of _photoUrls.values()) URL.revokeObjectURL(url);
   _photoUrls.clear();
@@ -110,7 +118,7 @@ async function reloadPeople() {
   const people = await db.allPeople();
   people.sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
   state.people = people;
-  for (const p of people) await loadPhotoUrl(p.photoId);
+  for (const p of people) { await loadPhotoUrl(p.photoId); await loadPhotoUrl(p.thumbId); }
 }
 
 // ── Navigation / UI ────────────────────────────────────────────────────────────
@@ -165,6 +173,7 @@ export async function savePerson(person) {
   person.updatedAt = nowISO();
   await db.putPerson(person);
   await loadPhotoUrl(person.photoId);
+  await loadPhotoUrl(person.thumbId);
   const i = state.people.findIndex((p) => p.id === person.id);
   if (i >= 0) state.people[i] = person; else state.people.unshift(person);
   state.people.sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
@@ -176,10 +185,11 @@ export async function savePerson(person) {
 
 export async function removePerson(id) {
   const p = personById(id);
-  if (p && p.photoId) {
-    await db.deletePhoto(p.photoId);
-    const url = _photoUrls.get(p.photoId);
-    if (url) { URL.revokeObjectURL(url); _photoUrls.delete(p.photoId); }
+  for (const pid of [p && p.photoId, p && p.thumbId]) {
+    if (!pid) continue;
+    await db.deletePhoto(pid);
+    const url = _photoUrls.get(pid);
+    if (url) { URL.revokeObjectURL(url); _photoUrls.delete(pid); }
   }
   await db.deletePerson(id);
   state.people = state.people.filter((x) => x.id !== id);

@@ -2,7 +2,7 @@
 // à son lieu principal, des points pour les lieux secondaires, et des arcs animés
 // reliant les lieux d'une même fiche (effet façon Polarsteps).
 
-import { photoUrl } from './store.js';
+import { thumbUrl } from './store.js';
 import { esc, safeColor } from './util.js';
 import { loadCountries, featureContains } from './countries.js';
 
@@ -76,7 +76,7 @@ function makePin(d, onClick) {
   const el = document.createElement('div');
   el.className = 'globe-pin';
   el.style.setProperty('--c', d.color);
-  const url = photoUrl(d.person.photoId);
+  const url = thumbUrl(d.person);
   const initial = (d.person.name || '?').trim().charAt(0).toUpperCase() || '?';
   el.innerHTML = `
     <div class="globe-pin__dot">

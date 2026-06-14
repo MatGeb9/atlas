@@ -26,7 +26,7 @@ function durationStr(start, end) {
 }
 
 function avatar(person, cls = '') {
-  const url = store.photoUrl(person.photoId);
+  const url = store.thumbUrl(person);
   const initial = (person.name || '?').trim().charAt(0).toUpperCase() || '?';
   return h('div', { class: 'avatar ' + cls, style: `--c:${safeColor(person.color)}` },
     url ? h('img', { src: url, alt: '' }) : h('span', {}, initial));
@@ -34,15 +34,22 @@ function avatar(person, cls = '') {
 
 /** Visionneuse plein écran : tap/clic sur l'image bascule entre « ajusté » et 1:1
  *  (zoom natif), tap sur le fond ou ✕ pour fermer, Échap aussi. */
+let _closeLightbox = null;
 function openLightbox(url) {
   if (!url) return;
+  if (_closeLightbox) _closeLightbox(); // pas d'empilement (double-tap, orphelin)
   const img = h('img', { class: 'lightbox__img', src: url, alt: '' });
   img.addEventListener('click', (e) => { e.stopPropagation(); img.classList.toggle('is-zoomed'); });
   const onKey = (e) => { if (e.key === 'Escape') close(); };
-  const close = () => { box.remove(); document.removeEventListener('keydown', onKey); };
+  const close = () => {
+    box.remove();
+    document.removeEventListener('keydown', onKey);
+    _closeLightbox = null;
+  };
   const box = h('div', { class: 'lightbox', onclick: close },
     h('button', { class: 'lightbox__close', title: 'Fermer', onclick: (e) => { e.stopPropagation(); close(); } }, '✕'),
     img);
+  _closeLightbox = close;
   document.addEventListener('keydown', onKey);
   document.body.appendChild(box);
 }

@@ -94,7 +94,9 @@ export function renderForm(host) {
   const base = editing ? store.personById(editing) : null;
   const draft = base ? structuredClone(base) : store.newPerson();
   const originalPhotoId = draft.photoId;
+  const originalThumbId = draft.thumbId;
   let pendingPhotoBlob = undefined; // undefined = inchangé, null = retiré, Blob = nouveau
+  let pendingThumbBlob = undefined; // miniature, même cycle de vie que pendingPhotoBlob
 
   host.innerHTML = '';
 
@@ -111,7 +113,7 @@ export function renderForm(host) {
       photoPreview.appendChild(h('img', { src: url, alt: '' }));
       photoPreview.appendChild(h('button', {
         type: 'button', class: 'photo-remove', title: 'Retirer la photo',
-        onclick: () => { pendingPhotoBlob = null; renderPhoto(); },
+        onclick: () => { pendingPhotoBlob = null; pendingThumbBlob = null; renderPhoto(); },
       }, '✕'));
     } else {
       photoPreview.appendChild(h('div', { class: 'photo-placeholder' }, '📷'));
@@ -123,7 +125,8 @@ export function renderForm(host) {
       const f = e.target.files && e.target.files[0];
       if (!f) return;
       try {
-        pendingPhotoBlob = await resizeImage(f, 2048, 0.9);
+        pendingPhotoBlob = await resizeImage(f, 1600, 0.85); // pleine résolution (visionneuse)
+        pendingThumbBlob = await resizeImage(f, 256, 0.8);    // miniature (globe/cartes)
         renderPhoto();
       } catch (err) { toast('Image illisible', 'err'); }
     },
@@ -353,11 +356,17 @@ export function renderForm(host) {
       try {
         if (pendingPhotoBlob === null) {
           if (originalPhotoId) await db.deletePhoto(originalPhotoId);
+          if (originalThumbId) await db.deletePhoto(originalThumbId);
           draft.photoId = null;
+          draft.thumbId = null;
         } else if (pendingPhotoBlob instanceof Blob) {
           const newId = await db.putPhoto(pendingPhotoBlob, 'image/jpeg');
+          const newThumbId = pendingThumbBlob instanceof Blob
+            ? await db.putPhoto(pendingThumbBlob, 'image/jpeg') : null;
           if (originalPhotoId && originalPhotoId !== newId) await db.deletePhoto(originalPhotoId);
+          if (originalThumbId && originalThumbId !== newThumbId) await db.deletePhoto(originalThumbId);
           draft.photoId = newId;
+          draft.thumbId = newThumbId;
         }
       } catch (err) { toast('Erreur en enregistrant la photo', 'err'); }
 
