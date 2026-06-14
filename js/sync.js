@@ -72,22 +72,51 @@ export async function exportBackup(passphrase) {
 }
 
 export async function importBackupFile(file, passphrase) {
+  // 1) Lecture (on retire un éventuel BOM + espaces parasites).
+  let text;
   try {
-    const text = await file.text();
-    let payload = JSON.parse(text);
+    text = (await file.text()).replace(/^﻿/, '').trim();
+  } catch (e) {
+    toast('Impossible de lire le fichier', 'err', 5000);
+    return;
+  }
+  if (!text) { toast('Le fichier est vide (export incomplet ?)', 'err', 6000); return; }
+
+  // 2) Parsing JSON.
+  let payload;
+  try {
+    payload = JSON.parse(text);
+  } catch (e) {
+    console.error('import: JSON invalide', e, 'début:', text.slice(0, 80));
+    toast('Fichier illisible : JSON invalide (fichier tronqué ?)', 'err', 7000);
+    return;
+  }
+
+  // 3) Déchiffrement éventuel — on retente avec saisie si le mot de passe du champ échoue.
+  try {
     if (payload.format === 'atlas-export-enc') {
-      const pass = passphrase || prompt('Mot de passe de la sauvegarde :');
-      if (!pass) return;
-      payload = await decryptJSON(payload, pass);
+      let pass = passphrase, data = null;
+      if (pass) { try { data = await decryptJSON(payload, pass); } catch (_) {} }
+      while (!data) {
+        pass = prompt('Mot de passe de cette sauvegarde :');
+        if (pass == null) return;               // annulé
+        try { data = await decryptJSON(payload, pass); }
+        catch (_) { toast('Mot de passe incorrect, réessaie', 'err'); }
+      }
+      payload = data;
     }
-    if (!payload || payload.format !== 'atlas-export') throw new Error('format');
+    if (!payload || payload.format !== 'atlas-export') {
+      toast('Format de sauvegarde non reconnu', 'err', 6000);
+      return;
+    }
+    // 4) Import.
     const replace = confirm('OK = REMPLACER les données actuelles.\nAnnuler = FUSIONNER avec l’existant.');
     const res = await db.importAll(payload, replace ? 'replace' : 'merge');
     await store.refreshFromDb();
     toast(`Importé : ${res.people} fiche(s), ${res.photos} photo(s)`, 'ok');
   } catch (e) {
     console.error(e);
-    toast('Fichier illisible ou mot de passe incorrect', 'err');
+    toast('Échec de l’import : ' + (e.message || e), 'err', 7000);
   }
 }
 
