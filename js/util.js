@@ -124,15 +124,17 @@ export function downloadBlob(blob, filename) {
  */
 export async function shareOrDownload(blob, filename) {
   const isTouch = (navigator.maxTouchPoints || 0) > 0;
-  try {
-    const file = new File([blob], filename, { type: blob.type || 'application/octet-stream' });
-    if (isTouch && navigator.canShare && navigator.canShare({ files: [file] })) {
-      await navigator.share({ files: [file], title: filename });
+  const file = new File([blob], filename, { type: blob.type || 'application/octet-stream' });
+  if (isTouch && navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      // IMPORTANT : partager UNIQUEMENT le fichier — surtout pas de `title`/`text`,
+      // sinon iOS crée un 2e fichier .txt (le titre) à côté du .atlas.
+      await navigator.share({ files: [file] });
       return true;
+    } catch (e) {
+      if (e && e.name === 'AbortError') return false; // annulé par l'utilisateur
+      console.error('partage échoué, repli téléchargement', e);
     }
-  } catch (e) {
-    if (e && e.name === 'AbortError') return false; // partage annulé par l'utilisateur
-    // autre erreur (ex. activation expirée) → repli sur le téléchargement
   }
   downloadBlob(blob, filename);
   return true;
