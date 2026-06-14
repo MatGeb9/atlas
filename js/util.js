@@ -100,9 +100,24 @@ export function blobToDataURL(blob) {
   });
 }
 
-export async function dataURLToBlob(dataURL) {
-  const res = await fetch(dataURL);
-  return res.blob();
+/**
+ * Convertit un data URL en Blob SANS `fetch` (un fetch vers `data:` est bloqué
+ * par la Content-Security-Policy → l'import des photos échouait). Décodage direct.
+ */
+export function dataURLToBlob(dataURL) {
+  const comma = dataURL.indexOf(',');
+  const header = dataURL.slice(0, comma);
+  const data = dataURL.slice(comma + 1);
+  const mime = (header.match(/data:([^;,]+)/) || [])[1] || 'application/octet-stream';
+  let bytes;
+  if (/;base64/i.test(header)) {
+    const bin = atob(data);
+    bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  } else {
+    bytes = new TextEncoder().encode(decodeURIComponent(data));
+  }
+  return new Blob([bytes], { type: mime });
 }
 
 export function downloadBlob(blob, filename) {
