@@ -4,7 +4,7 @@
 
 import * as db from './db.js';
 import * as store from './store.js';
-import { downloadBlob, toast, dataURLToBlob } from './util.js';
+import { shareOrDownload, toast, dataURLToBlob } from './util.js';
 
 // ── Crypto (AES-GCM via PBKDF2) ──────────────────────────────────────────────
 
@@ -62,9 +62,11 @@ export async function exportBackup(passphrase) {
     // octet-stream (binaire générique) : sinon iOS force l'extension .json
     // d'après le type MIME et ignore le « .atlas » du nom de fichier.
     const blob = new Blob([json], { type: 'application/octet-stream' });
-    downloadBlob(blob, `atlas-${stamp}.atlas`);
-    toast(passphrase ? 'Sauvegarde chiffrée exportée' : 'Sauvegarde exportée (non chiffrée)',
-      passphrase ? 'ok' : 'info');
+    const ok = await shareOrDownload(blob, `atlas-${stamp}.atlas`);
+    if (ok) {
+      toast(passphrase ? 'Sauvegarde chiffrée exportée' : 'Sauvegarde exportée (non chiffrée)',
+        passphrase ? 'ok' : 'info');
+    }
   } catch (e) {
     console.error(e);
     toast('Échec de l’export', 'err');

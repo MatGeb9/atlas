@@ -116,6 +116,28 @@ export function downloadBlob(blob, filename) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+/**
+ * Enregistre un fichier. Sur appareil tactile (iPhone/iPad), passe par le
+ * PARTAGE NATIF (`navigator.share`) — fiable pour les gros fichiers (le
+ * téléchargement <a download> tronque en mode app installée). Desktop → download.
+ * @returns {Promise<boolean>} false si l'utilisateur a annulé.
+ */
+export async function shareOrDownload(blob, filename) {
+  const isTouch = (navigator.maxTouchPoints || 0) > 0;
+  try {
+    const file = new File([blob], filename, { type: blob.type || 'application/octet-stream' });
+    if (isTouch && navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: filename });
+      return true;
+    }
+  } catch (e) {
+    if (e && e.name === 'AbortError') return false; // partage annulé par l'utilisateur
+    // autre erreur (ex. activation expirée) → repli sur le téléchargement
+  }
+  downloadBlob(blob, filename);
+  return true;
+}
+
 /** Toast non bloquant en bas de l'écran. */
 export function toast(msg, kind = 'info', ms = 3200) {
   const host = document.getElementById('toasts');
