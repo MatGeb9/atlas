@@ -208,7 +208,9 @@ export function renderSettings(bodyEl) {
       h('button', { class: 'btn btn--primary', onclick: doExport }, '⬇️ Exporter (chiffré)'),
       h('label', { class: 'btn btn--ghost' }, '⬆️ Importer',
         h('input', {
-          type: 'file', accept: '.atlas,application/json', class: 'visually-hidden',
+          // PAS de `accept` : iOS grise les .atlas (extension inconnue). On
+          // accepte tout et on valide à la lecture (format vérifié dans importBackupFile).
+          type: 'file', class: 'visually-hidden',
           onchange: async (e) => {
             const f = e.target.files && e.target.files[0];
             if (f) await importBackupFile(f, passBackupIn.value);
