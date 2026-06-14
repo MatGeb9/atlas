@@ -123,7 +123,7 @@ export function renderForm(host) {
       const f = e.target.files && e.target.files[0];
       if (!f) return;
       try {
-        pendingPhotoBlob = await resizeImage(f, 1280, 0.85);
+        pendingPhotoBlob = await resizeImage(f, 2048, 0.9);
         renderPhoto();
       } catch (err) { toast('Image illisible', 'err'); }
     },

@@ -32,6 +32,21 @@ function avatar(person, cls = '') {
     url ? h('img', { src: url, alt: '' }) : h('span', {}, initial));
 }
 
+/** Visionneuse plein écran : tap/clic sur l'image bascule entre « ajusté » et 1:1
+ *  (zoom natif), tap sur le fond ou ✕ pour fermer, Échap aussi. */
+function openLightbox(url) {
+  if (!url) return;
+  const img = h('img', { class: 'lightbox__img', src: url, alt: '' });
+  img.addEventListener('click', (e) => { e.stopPropagation(); img.classList.toggle('is-zoomed'); });
+  const onKey = (e) => { if (e.key === 'Escape') close(); };
+  const close = () => { box.remove(); document.removeEventListener('keydown', onKey); };
+  const box = h('div', { class: 'lightbox', onclick: close },
+    h('button', { class: 'lightbox__close', title: 'Fermer', onclick: (e) => { e.stopPropagation(); close(); } }, '✕'),
+    img);
+  document.addEventListener('keydown', onKey);
+  document.body.appendChild(box);
+}
+
 function ratingBar(rating) {
   if (rating == null) return null;
   return h('div', { class: 'ratingbar', title: `${rating}/10` },
@@ -91,6 +106,10 @@ export function renderDetail(bodyEl) {
   bodyEl.innerHTML = '';
   if (!p) { bodyEl.appendChild(h('p', {}, 'Fiche introuvable.')); return; }
 
+  const heroPhoto = store.photoUrl(p.photoId);
+  const heroAv = avatar(p, 'avatar--xl' + (heroPhoto ? ' avatar--zoom' : ''));
+  if (heroPhoto) heroAv.addEventListener('click', () => openLightbox(heroPhoto));
+
   const places = [];
   if (p.origin) places.push(['Origine', p.origin]);
   if (p.metPlace) places.push(['Rencontre', p.metPlace]);
@@ -98,7 +117,7 @@ export function renderDetail(bodyEl) {
 
   bodyEl.appendChild(h('div', { class: 'detail' },
     h('div', { class: 'detail__hero' },
-      avatar(p, 'avatar--xl'),
+      heroAv,
       h('div', {},
         h('h2', {}, esc(p.name || 'Sans nom')),
         p.status ? h('span', { class: 'badge', style: `--c:${safeColor(p.color)}` }, esc(p.status)) : null,
