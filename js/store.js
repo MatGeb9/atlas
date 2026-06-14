@@ -202,11 +202,21 @@ export function knownParamKeys() {
   return [...set].sort((a, b) => a.localeCompare(b, 'fr'));
 }
 
+export function isDefaultParam(key) {
+  return (state.settings.globalParams || []).includes((key || '').trim());
+}
+
 export async function promoteParam(key) {
   key = (key || '').trim();
   if (!key) return;
   const gp = state.settings.globalParams || [];
   if (!gp.includes(key)) await updateSettings({ globalParams: [...gp, key] });
+}
+
+export async function demoteParam(key) {
+  key = (key || '').trim();
+  const gp = (state.settings.globalParams || []).filter((k) => k !== key);
+  await updateSettings({ globalParams: gp });
 }
 
 /** Rechargement complet (après import / sync). */

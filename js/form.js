@@ -240,7 +240,7 @@ export function renderForm(host) {
     const used = new Set(fields.map((f) => (f.key || '').trim()).filter(Boolean));
     const avail = store.knownParamKeys().filter((k) => !used.has(k));
     if (!avail.length) {
-      quickWrap.appendChild(h('span', { class: 'hint' }, 'Astuce : ★ sur un paramètre le rend réutilisable pour toutes les fiches.'));
+      quickWrap.appendChild(h('span', { class: 'hint' }, 'Astuce : clique l’étoile (☆ → ★) d’un paramètre pour le garder « par défaut » sur toutes les fiches.'));
       return;
     }
     avail.forEach((k) => quickWrap.appendChild(h('button', {
@@ -251,19 +251,37 @@ export function renderForm(host) {
   function renderFields() {
     fieldsWrap.innerHTML = '';
     fields.forEach((f) => {
+      const star = h('button', { type: 'button', class: 'btn btn--ghost mini star-btn' });
+      const paintStar = () => {
+        const on = store.isDefaultParam(f.key);
+        star.textContent = on ? '★' : '☆';
+        star.classList.toggle('is-on', on);
+        star.title = on
+          ? 'Paramètre par défaut (réutilisable) — clique pour retirer'
+          : 'Rendre ce paramètre « par défaut » (réutilisable sur toutes les fiches)';
+      };
+      star.addEventListener('click', async () => {
+        const k = (f.key || '').trim();
+        if (!k) { toast('Donne d’abord un nom au paramètre', 'err'); return; }
+        if (store.isDefaultParam(k)) {
+          await store.demoteParam(k);
+          toast('« ' + k + ' » retiré des paramètres par défaut', 'info');
+        } else {
+          await store.promoteParam(k);
+          toast('« ' + k + ' » ajouté aux paramètres par défaut', 'ok');
+        }
+        paintStar();
+        renderQuick();
+      });
+      const keyInput = h('input', {
+        type: 'text', list: 'paramKeysDL', value: f.key || '', placeholder: 'Paramètre (ex: taille)',
+        oninput: (e) => { f.key = e.target.value; paintStar(); },
+      });
+      paintStar();
       fieldsWrap.appendChild(h('div', { class: 'kvrow' },
-        h('input', { type: 'text', list: 'paramKeysDL', value: f.key || '', placeholder: 'Paramètre (ex: taille)', oninput: (e) => { f.key = e.target.value; } }),
+        keyInput,
         h('input', { type: 'text', value: f.value || '', placeholder: 'Valeur', oninput: (e) => { f.value = e.target.value; } }),
-        h('button', {
-          type: 'button', class: 'btn btn--ghost mini', title: 'Rendre ce paramètre réutilisable',
-          onclick: async () => {
-            const k = (f.key || '').trim();
-            if (!k) return;
-            await store.promoteParam(k);
-            toast('« ' + k + ' » réutilisable partout', 'ok');
-            renderQuick();
-          },
-        }, '★'),
+        star,
         h('button', {
           type: 'button', class: 'btn btn--ghost mini',
           onclick: () => { const i = fields.indexOf(f); if (i >= 0) fields.splice(i, 1); renderFields(); renderQuick(); },

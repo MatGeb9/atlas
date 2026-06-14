@@ -373,3 +373,5 @@ input.mini { width: auto !important; flex: 1; }
 .chip--add { cursor: pointer; background: var(--surface-2); border: 1px dashed var(--border); }
 .chip--add:hover { border-color: var(--accent); color: var(--accent); }
 .hint { font-size: 12px; color: var(--text-mid); }
+.star-btn { font-size: 15px; line-height: 1; color: var(--text-mid); }
+.star-btn.is-on { color: var(--amber); border-color: var(--amber); background: rgba(244,184,96,.12); }
