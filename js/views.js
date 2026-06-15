@@ -55,8 +55,10 @@ function openLightbox(url) {
   document.body.appendChild(box);
 }
 
-/** Sélecteur affiché quand plusieurs fiches partagent un même lieu (pin groupé). */
-export function openPlacePicker(people) {
+/** Sélecteur de fiches en pop-up. Utilisé par le globe (pins groupés) et le
+ *  dashboard (clic sur un paramètre ou un pays). `title` optionnel : libellé du
+ *  groupe ; à défaut « N fiches à ce lieu » (comportement historique globe). */
+export function openPlacePicker(people, title) {
   if (!people || !people.length) return;
   const onKey = (e) => { if (e.key === 'Escape') close(); };
   const close = () => { box.remove(); document.removeEventListener('keydown', onKey); };
@@ -72,7 +74,7 @@ export function openPlacePicker(people) {
         p.status ? h('span', { class: 'muted' }, esc(p.status)) : null)));
   const box = h('div', { class: 'lightbox', onclick: (e) => { if (e.target === box) close(); } },
     h('div', { class: 'placepick' },
-      h('h3', {}, `${people.length} fiches à ce lieu`),
+      h('h3', {}, title || `${people.length} fiches à ce lieu`),
       h('div', { class: 'placepick__list' }, ...items)));
   document.addEventListener('keydown', onKey);
   document.body.appendChild(box);
@@ -363,26 +365,37 @@ function timelineSection(people) {
   return h('div', { class: 'timeline' }, h('div', { class: 'tl-head' }, axis), rows);
 }
 
-function distBlock(title, entries) {
+function distBlock(title, entries, peopleFor) {
   const max = entries[0][1] || 1;
   return h('div', { class: 'dist' },
     h('h4', {}, esc(title)),
-    ...entries.slice(0, 8).map(([val, n]) => h('div', { class: 'dist-row' },
-      h('span', { class: 'dist-lbl' }, esc(String(val))),
-      h('div', { class: 'dist-bar' }, h('div', { class: 'dist-bar__fill', style: `width:${(n / max) * 100}%` })),
-      h('span', { class: 'dist-n' }, String(n)))));
+    ...entries.slice(0, 8).map(([val, n]) => {
+      const attrs = { class: 'dist-row' };
+      if (peopleFor) {
+        attrs.class += ' dist-row--click';
+        attrs.title = `Voir les ${n} fiche${n > 1 ? 's' : ''}`;
+        attrs.onclick = () => openPlacePicker(peopleFor(val), `${title} · ${val}`);
+      }
+      return h('div', attrs,
+        h('span', { class: 'dist-lbl' }, esc(String(val))),
+        h('div', { class: 'dist-bar' }, h('div', { class: 'dist-bar__fill', style: `width:${(n / max) * 100}%` })),
+        h('span', { class: 'dist-n' }, String(n)));
+    }));
 }
 
 function paramsSection(people) {
   const blocks = [];
   const statuses = tally(people.map((p) => p.status).filter(Boolean));
-  if (statuses.length) blocks.push(distBlock('Statut', statuses));
+  if (statuses.length) blocks.push(distBlock('Statut', statuses,
+    (val) => people.filter((p) => p.status === val)));
   for (const key of store.knownParamKeys()) {
     const vals = tally(people.flatMap((p) => (p.fields || []).filter((f) => f.key === key && f.value).map((f) => f.value)));
-    if (vals.length) blocks.push(distBlock(key, vals));
+    if (vals.length) blocks.push(distBlock(key, vals,
+      (val) => people.filter((p) => (p.fields || []).some((f) => f.key === key && f.value === val))));
   }
   const tags = tally(people.flatMap((p) => p.tags || []));
-  if (tags.length) blocks.push(distBlock('Tags', tags));
+  if (tags.length) blocks.push(distBlock('Tags', tags,
+    (val) => people.filter((p) => (p.tags || []).includes(val))));
   if (!blocks.length) return h('div', { class: 'muted' }, 'Ajoute des statuts, paramètres ou tags pour les voir classés ici.');
   return h('div', { class: 'dist-grid' }, ...blocks);
 }
@@ -394,13 +407,14 @@ async function countryStats(people) {
     if (!o) continue;
     const name = await countryNameAt(Number(o.lng), Number(o.lat));
     const key = name || 'Inconnu';
-    const e = map.get(key) || { count: 0, sum: 0, rated: 0 };
+    const e = map.get(key) || { count: 0, sum: 0, rated: 0, people: [] };
     e.count++;
+    e.people.push(p);
     if (p.rating != null) { e.sum += p.rating; e.rated++; }
     map.set(key, e);
   }
   return [...map.entries()]
-    .map(([name, e]) => ({ name, count: e.count, avg: e.rated ? e.sum / e.rated : null }))
+    .map(([name, e]) => ({ name, count: e.count, avg: e.rated ? e.sum / e.rated : null, people: e.people }))
     .sort((a, b) => b.count - a.count || (b.avg || 0) - (a.avg || 0));
 }
 
@@ -408,7 +422,11 @@ function countryStatsNode(rows) {
   if (!rows.length) return h('div', { class: 'muted' }, 'Renseigne des origines pour le classement par pays.');
   const maxC = rows[0].count || 1;
   return h('div', { class: 'ctry-list' },
-    ...rows.map((r) => h('div', { class: 'ctry-row' },
+    ...rows.map((r) => h('div', {
+      class: 'ctry-row ctry-row--click',
+      title: `Voir les ${r.count} fiche${r.count > 1 ? 's' : ''}`,
+      onclick: () => openPlacePicker(r.people, `${r.name} · ${r.count} fiche${r.count > 1 ? 's' : ''}`),
+    },
       h('span', { class: 'ctry-name' }, esc(r.name)),
       h('div', { class: 'ctry-bar' }, h('div', { class: 'ctry-bar__fill', style: `width:${(r.count / maxC) * 100}%` })),
       h('span', { class: 'ctry-meta' }, String(r.count),
