@@ -171,6 +171,84 @@ export function initGlobe(container, { onPersonClick, onClusterClick, settings }
 
   let showArcs = settings.showArcs !== false;
 
+  // ── Jour / nuit en direct (terminateur temps réel) ──────────────────────────
+  // Patch du shader du matériau du globe (three interne du moteur) : mélange la
+  // texture jour (map = Blue Marble) et la texture nuit selon la direction réelle
+  // du soleil. Contenu au mode 'live' (uMix=0 → comportement normal inchangé).
+  let _patched = false, _shaderRef = null, _nightTex = null, _sunTimer = null, _mix = 0;
+  const _sun = { x: 1, y: 0, z: 0 };
+
+  function _updateSun() {
+    const now = new Date();
+    const utcH = now.getUTCHours() + now.getUTCMinutes() / 60 + now.getUTCSeconds() / 3600;
+    const sunLng = 15 * (12 - utcH);                              // longitude subsolaire
+    const dayOfYear = (now - Date.UTC(now.getUTCFullYear(), 0, 0)) / 86400000;
+    const decl = -23.44 * Math.cos((2 * Math.PI / 365) * (dayOfYear + 10)); // latitude subsolaire
+    const phi = (90 - decl) * Math.PI / 180;
+    const theta = (90 - sunLng) * Math.PI / 180;
+    _sun.x = Math.sin(phi) * Math.cos(theta);
+    _sun.y = Math.cos(phi);
+    _sun.z = Math.sin(phi) * Math.sin(theta);
+  }
+
+  function _ensurePatched() {
+    if (_patched) return true;
+    const mat = world.globeMaterial();
+    const TexCtor = mat && mat.map && mat.map.constructor;
+    if (!TexCtor) return false; // texture jour pas encore chargée → réessai
+    _nightTex = new TexCtor();
+    _nightTex.colorSpace = mat.map.colorSpace;
+    _nightTex.wrapS = mat.map.wrapS; _nightTex.wrapT = mat.map.wrapT;
+    const img = new Image();
+    img.onload = () => { _nightTex.image = img; _nightTex.needsUpdate = true; };
+    img.src = TEXTURES.night;
+    mat.onBeforeCompile = (shader) => {
+      shader.uniforms.uNightTex = { value: _nightTex };
+      shader.uniforms.uSunDir = { value: _sun };
+      shader.uniforms.uMix = { value: _mix };
+      shader.vertexShader = 'varying vec2 vGUv;\nvarying vec3 vGNormal;\n' +
+        shader.vertexShader.replace('void main() {',
+          'void main() {\n  vGUv = uv;\n  vGNormal = normalize(normal);');
+      shader.fragmentShader = ('uniform sampler2D uNightTex;\nuniform vec3 uSunDir;\nuniform float uMix;\nvarying vec2 vGUv;\nvarying vec3 vGNormal;\n' + shader.fragmentShader)
+        .replace('#include <map_fragment>', `
+          #ifdef USE_MAP
+            vec4 dayC = texture2D( map, vGUv );
+            float sd = dot( normalize(vGNormal), normalize(uSunDir) );
+            float dayAmt = smoothstep(-0.12, 0.12, sd);
+            vec3 base = mix( dayC.rgb, mix(texture2D(uNightTex, vGUv).rgb, dayC.rgb, dayAmt), uMix );
+            diffuseColor.rgb *= base;
+            diffuseColor.a *= dayC.a;
+          #endif
+        `)
+        .replace('#include <emissivemap_fragment>', `
+          #include <emissivemap_fragment>
+          #ifdef USE_MAP
+            float nAmt = (1.0 - smoothstep(-0.12, 0.12, dot(normalize(vGNormal), normalize(uSunDir)))) * uMix;
+            totalEmissiveRadiance += texture2D(uNightTex, vGUv).rgb * nAmt * 1.3;
+          #endif
+        `);
+      _shaderRef = shader;
+    };
+    mat.needsUpdate = true;
+    _patched = true;
+    return true;
+  }
+
+  function _setLive(on) {
+    _mix = on ? 1 : 0;
+    if (on) {
+      world.globeImageUrl(TEXTURES.blue); // jour = couleur normale
+      if (!_ensurePatched()) { setTimeout(() => _setLive(true), 250); return; }
+      _updateSun();
+      if (!_sunTimer) _sunTimer = setInterval(_updateSun, 60000);
+    } else if (_sunTimer) {
+      clearInterval(_sunTimer); _sunTimer = null;
+    }
+    if (_shaderRef) _shaderRef.uniforms.uMix.value = _mix;
+  }
+
+  if (settings.texture === 'live') _setLive(true);
+
   return {
     update(people) {
       const { avatars, points, arcs } = buildLayers(people);
@@ -183,6 +261,8 @@ export function initGlobe(container, { onPersonClick, onClusterClick, settings }
       if (p) world.pointOfView({ lat: p.lat, lng: p.lng, altitude: 1.6 }, 1100);
     },
     setTexture(name) {
+      if (name === 'live') { _setLive(true); return; }
+      _setLive(false);
       world.globeImageUrl(TEXTURES[name] || TEXTURES.blue);
     },
     setAutoRotate(on) {
@@ -211,6 +291,7 @@ export function initGlobe(container, { onPersonClick, onClusterClick, settings }
       world.polygonsData(out);
     },
     destroy() {
+      if (_sunTimer) clearInterval(_sunTimer);
       ro.disconnect();
       try { world._destructor && world._destructor(); } catch (_) {}
       container.innerHTML = '';

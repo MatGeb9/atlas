@@ -240,7 +240,7 @@ export function renderSettings(bodyEl) {
   bodyEl.appendChild(h('div', { class: 'settings' },
     h('h3', {}, 'Apparence'),
     sel('theme', 'Thème de l’app', [['dark', 'Sombre'], ['light', 'Clair']]),
-    sel('texture', 'Texture de la Terre', [['blue', 'Couleur normale (jour)'], ['night', 'Nuit (lumières des villes)'], ['dark', 'Sombre épuré']]),
+    sel('texture', 'Texture de la Terre', [['blue', 'Couleur normale (jour)'], ['live', '🌗 Jour / nuit en direct'], ['night', 'Nuit (lumières des villes)'], ['dark', 'Sombre épuré']]),
     h('div', { class: 'field' }, toggle('autoRotate', 'Rotation automatique')),
     h('div', { class: 'field' }, toggle('showArcs', 'Afficher les arcs entre lieux')),
     h('div', { class: 'field' }, toggle('colorizeCountries', 'Colorier les pays d’origine sur le globe')),
