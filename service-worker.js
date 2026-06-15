@@ -1,4 +1,4 @@
-const CACHE = 'atlas-v18';
+const CACHE = 'atlas-v19';
 const ASSETS = [
   './',
   './index.html',
@@ -25,6 +25,7 @@ const ASSETS = [
   './js/sync.js',
   './js/autosave.js',
   './js/countries.js',
+  './js/avatar.js',
 ];
 
 self.addEventListener('install', (e) => {

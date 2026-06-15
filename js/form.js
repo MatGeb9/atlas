@@ -4,6 +4,70 @@ import * as store from './store.js';
 import * as db from './db.js';
 import { h, esc, toast, resizeImage, debounce, ALL_COLORS, uid } from './util.js';
 import { searchPlaces, parseLatLng } from './geocode.js';
+import { avatarDataUrl, SKINS, HAIRS, EYECOLORS, HAIRSTYLES, FACIALS, GENDERS, defaultAvatar } from './avatar.js';
+
+function randomizeAvatar(a) {
+  const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+  a.gender = pick(GENDERS)[0];
+  a.skin = pick(SKINS);
+  a.hairStyle = pick(HAIRSTYLES)[0];
+  a.hair = pick(HAIRS);
+  a.eyes = pick(EYECOLORS);
+  a.facial = a.gender === 'h' ? pick(FACIALS)[0] : 'aucune';
+  a.glasses = Math.random() < 0.3;
+}
+
+/** Constructeur d'avatar illustré (utilisé si pas de photo). Mute draft.avatar. */
+function avatarBuilder(draft) {
+  const preview = h('div', { class: 'av-preview' });
+  const controls = h('div', { class: 'av-controls' });
+  const refresh = () => {
+    preview.innerHTML = '';
+    preview.appendChild(draft.avatar
+      ? h('img', { src: avatarDataUrl(draft.avatar), alt: '' })
+      : h('span', { class: 'hint' }, 'Initiale'));
+  };
+  function buildControls() {
+    controls.innerHTML = '';
+    if (!draft.avatar) return;
+    const a = draft.avatar;
+    const sel = (label, field, opts) => h('div', { class: 'field' }, h('label', {}, label),
+      h('select', { onchange: (e) => { a[field] = e.target.value; refresh(); } },
+        ...opts.map(([v, t]) => h('option', { value: v, selected: a[field] === v }, t))));
+    const swatches = (label, field, colors) => {
+      const wrap = h('div', { class: 'colors' });
+      colors.forEach((col) => wrap.appendChild(h('button', {
+        type: 'button', class: 'swatch' + (a[field] === col ? ' is-sel' : ''),
+        style: `--c:${col}`, 'aria-label': col,
+        onclick: () => { a[field] = col; buildControls(); refresh(); },
+      })));
+      return h('div', { class: 'field' }, h('label', {}, label), wrap);
+    };
+    controls.append(
+      sel('Genre', 'gender', GENDERS),
+      swatches('Teint', 'skin', SKINS),
+      sel('Coiffure', 'hairStyle', HAIRSTYLES),
+      swatches('Couleur des cheveux', 'hair', HAIRS),
+      swatches('Yeux', 'eyes', EYECOLORS),
+      sel('Pilosité', 'facial', FACIALS),
+      h('label', { class: 'switch' },
+        h('input', { type: 'checkbox', checked: !!a.glasses, onchange: (e) => { a.glasses = e.target.checked; refresh(); } }),
+        h('span', {}, 'Lunettes')),
+      h('button', { type: 'button', class: 'btn btn--ghost mini', onclick: () => { randomizeAvatar(a); buildControls(); refresh(); } }, '🎲 Aléatoire'));
+  }
+  const toggle = h('label', { class: 'switch', style: 'margin-bottom:10px' },
+    h('input', {
+      type: 'checkbox', checked: !!draft.avatar,
+      onchange: (e) => { draft.avatar = e.target.checked ? (draft.avatar || defaultAvatar()) : null; buildControls(); refresh(); },
+    }),
+    h('span', {}, 'Utiliser un avatar illustré'));
+  buildControls(); refresh();
+  return h('details', { class: 'av-builder', open: !!draft.avatar },
+    h('summary', {}, '🧑‍🎨 Avatar illustré'),
+    h('p', { class: 'hint', style: 'margin:6px 0' }, 'Utilisé comme image quand il n’y a pas de photo.'),
+    toggle,
+    h('div', { class: 'av-row' }, preview, controls));
+}
 
 /**
  * Champ « lieu » réutilisable : recherche géocodée + saisie manuelle.
@@ -375,6 +439,8 @@ export function renderForm(host) {
       h('div', { class: 'form-photo-fields' },
         h('div', { class: 'field' }, h('label', {}, 'Prénom / surnom'), nameInput),
         h('div', { class: 'field' }, h('label', {}, 'Statut'), statusSelect))),
+
+    avatarBuilder(draft),
 
     h('div', { class: 'field' },
       h('label', {}, 'Note ', ratingVal, ' /10'),

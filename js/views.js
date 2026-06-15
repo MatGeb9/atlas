@@ -5,6 +5,7 @@ import { h, esc, fmtDate, toast, safeColor } from './util.js';
 import { exportBackup, importBackupFile, syncNow } from './sync.js';
 import * as autosave from './autosave.js';
 import { countryNameAt } from './countries.js';
+import { avatarDataUrl } from './avatar.js';
 
 function ageDiffStr(n) {
   if (n === 0) return 'même âge';
@@ -26,7 +27,7 @@ function durationStr(start, end) {
 }
 
 function avatar(person, cls = '') {
-  const url = store.thumbUrl(person);
+  const url = store.thumbUrl(person) || (person.avatar ? avatarDataUrl(person.avatar) : null);
   const initial = (person.name || '?').trim().charAt(0).toUpperCase() || '?';
   return h('div', { class: 'avatar ' + cls, style: `--c:${safeColor(person.color)}` },
     url ? h('img', { src: url, alt: '' }) : h('span', {}, initial));
@@ -136,7 +137,7 @@ export function renderDetail(bodyEl) {
   bodyEl.innerHTML = '';
   if (!p) { bodyEl.appendChild(h('p', {}, 'Fiche introuvable.')); return; }
 
-  const heroPhoto = store.photoUrl(p.photoId);
+  const heroPhoto = store.photoUrl(p.photoId) || (p.avatar ? avatarDataUrl(p.avatar) : null);
   const heroAv = avatar(p, 'avatar--xl' + (heroPhoto ? ' avatar--zoom' : ''));
   if (heroPhoto) heroAv.addEventListener('click', () => openLightbox(heroPhoto));
 

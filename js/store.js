@@ -33,6 +33,7 @@ export function newPerson() {
     name: '',
     photoId: null,       // photo pleine résolution (détail / visionneuse)
     thumbId: null,       // miniature 256px (globe, cartes, avatars)
+    avatar: null,        // avatar illustré généré (config) si pas de photo
     origin: null,        // { label, lat, lng }
     metPlace: null,      // { label, lat, lng }
     places: [],          // [{ label, lat, lng, note }]

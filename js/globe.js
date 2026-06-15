@@ -5,6 +5,7 @@
 import { thumbUrl } from './store.js';
 import { esc, safeColor } from './util.js';
 import { loadCountries, featureContains } from './countries.js';
+import { avatarDataUrl } from './avatar.js';
 
 const TEXTURES = {
   night: './vendor/textures/earth-night.jpg',
@@ -86,7 +87,7 @@ function makePin(d, onClick, onCluster) {
   const el = document.createElement('div');
   el.className = 'globe-pin';
   el.style.setProperty('--c', safeColor(lead.color));
-  const url = thumbUrl(lead);
+  const url = thumbUrl(lead) || (lead.avatar ? avatarDataUrl(lead.avatar) : null);
   const initial = (lead.name || '?').trim().charAt(0).toUpperCase() || '?';
   el.innerHTML = `
     <div class="globe-pin__dot">
