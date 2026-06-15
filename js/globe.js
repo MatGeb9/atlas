@@ -118,7 +118,7 @@ export function initGlobe(container, { onPersonClick, onClusterClick, settings }
 
   const world = window.Globe({ animateIn: true })(container)
     .backgroundImageUrl('./vendor/textures/night-sky.png')
-    .globeImageUrl(TEXTURES[settings.texture] || TEXTURES.night)
+    .globeImageUrl(TEXTURES[settings.texture] || TEXTURES.blue)
     .bumpImageUrl('./vendor/textures/earth-topology.png')
     .showAtmosphere(true)
     .atmosphereColor('#6C5CE7')
@@ -183,7 +183,7 @@ export function initGlobe(container, { onPersonClick, onClusterClick, settings }
       if (p) world.pointOfView({ lat: p.lat, lng: p.lng, altitude: 1.6 }, 1100);
     },
     setTexture(name) {
-      world.globeImageUrl(TEXTURES[name] || TEXTURES.night);
+      world.globeImageUrl(TEXTURES[name] || TEXTURES.blue);
     },
     setAutoRotate(on) {
       rotateWanted = !!on;

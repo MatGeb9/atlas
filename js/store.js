@@ -9,7 +9,8 @@ export const STATUS_OPTIONS = [
 ];
 
 export const DEFAULT_SETTINGS = {
-  texture: 'night',     // 'night' | 'blue' | 'dark'
+  texture: 'blue',      // 'blue' (couleur normale/jour) | 'night' | 'dark'
+  textureMigrated: false, // bascule unique nuit→couleur normale (anciens réglages)
   theme: 'dark',        // 'dark' | 'light'
   autoRotate: true,
   showArcs: true,
@@ -108,6 +109,12 @@ function revokeAllPhotoUrls() {
 export async function init() {
   const savedSettings = await db.getSetting('settings', null);
   state.settings = { ...DEFAULT_SETTINGS, ...(savedSettings || {}) };
+  // Bascule unique : le défaut est passé de « nuit » à « couleur normale ».
+  if (!state.settings.textureMigrated) {
+    if (state.settings.texture === 'night') state.settings.texture = 'blue';
+    state.settings.textureMigrated = true;
+    await db.setSetting('settings', state.settings);
+  }
   await reloadPeople();
   state.ready = true;
   emit();
