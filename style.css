@@ -79,6 +79,11 @@ a { color: var(--accent); }
   border: 2px solid var(--c); opacity: .7;
   animation: pulse 2.4s ease-out infinite;
 }
+.globe-pin__count {
+  position: absolute; top: -5px; right: -5px; min-width: 18px; height: 18px; padding: 0 4px;
+  border-radius: 9px; background: var(--c); color: #fff; font-size: 11px; font-weight: 800;
+  display: flex; align-items: center; justify-content: center; border: 2px solid #0c0b16; box-sizing: border-box;
+}
 @keyframes pulse {
   0% { transform: scale(1); opacity: .7; }
   100% { transform: scale(2.1); opacity: 0; }
@@ -185,6 +190,18 @@ body.theme-light .topbar { background: linear-gradient(180deg, rgba(238,240,248,
 .lightbox__close { position: fixed; top: calc(env(safe-area-inset-top) + 10px); right: 14px;
   width: 40px; height: 40px; border-radius: 50%; background: rgba(0,0,0,.5);
   border: 1px solid rgba(255,255,255,.3); color: #fff; font-size: 17px; z-index: 1; }
+
+/* Sélecteur de fiches d'un même lieu (pin groupé) */
+.placepick { background: var(--surface-solid); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 16px 18px; width: min(360px, 92vw); max-height: 80vh; overflow: auto; box-shadow: var(--shadow); }
+.placepick h3 { font-size: 16px; margin-bottom: 12px; }
+.placepick__list { display: flex; flex-direction: column; gap: 8px; }
+.placepick__item { display: flex; align-items: center; gap: 12px; text-align: left; width: 100%;
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px;
+  color: var(--text); cursor: pointer; }
+.placepick__item:hover { border-color: var(--accent); }
+.placepick__meta { display: flex; flex-direction: column; min-width: 0; }
+.placepick__meta strong { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .badge { display: inline-block; margin-top: 5px; padding: 2px 9px; border-radius: 20px; font-size: 12px; font-weight: 600;
   color: #fff; background: var(--c, var(--accent)); }

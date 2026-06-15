@@ -4,7 +4,7 @@ import * as store from './store.js';
 import * as autosave from './autosave.js';
 import { initGlobe } from './globe.js';
 import { renderForm } from './form.js';
-import { renderListView, renderDetail, renderSettings, renderDashboard } from './views.js';
+import { renderListView, renderDetail, renderSettings, renderDashboard, openPlacePicker } from './views.js';
 import { toast } from './util.js';
 
 const $ = (id) => document.getElementById(id);
@@ -116,6 +116,7 @@ async function boot() {
   const state = store.getState();
   globeCtl = initGlobe($('globe'), {
     onPersonClick: (id) => store.openDetail(id),
+    onClusterClick: (people) => openPlacePicker(people),
     settings: state.settings,
   });
   lastApplied = {

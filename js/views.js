@@ -54,6 +54,29 @@ function openLightbox(url) {
   document.body.appendChild(box);
 }
 
+/** Sélecteur affiché quand plusieurs fiches partagent un même lieu (pin groupé). */
+export function openPlacePicker(people) {
+  if (!people || !people.length) return;
+  const onKey = (e) => { if (e.key === 'Escape') close(); };
+  const close = () => { box.remove(); document.removeEventListener('keydown', onKey); };
+  const items = people.slice()
+    .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'fr'))
+    .map((p) => h('button', {
+      class: 'placepick__item',
+      onclick: () => { close(); store.openDetail(p.id); },
+    },
+      avatar(p, 'avatar--lg'),
+      h('div', { class: 'placepick__meta' },
+        h('strong', {}, esc(p.name || 'Sans nom')),
+        p.status ? h('span', { class: 'muted' }, esc(p.status)) : null)));
+  const box = h('div', { class: 'lightbox', onclick: (e) => { if (e.target === box) close(); } },
+    h('div', { class: 'placepick' },
+      h('h3', {}, `${people.length} fiches à ce lieu`),
+      h('div', { class: 'placepick__list' }, ...items)));
+  document.addEventListener('keydown', onKey);
+  document.body.appendChild(box);
+}
+
 function ratingBar(rating) {
   if (rating == null) return null;
   return h('div', { class: 'ratingbar', title: `${rating}/10` },

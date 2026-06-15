@@ -35,7 +35,7 @@ function primaryPoint(person) {
 }
 
 function buildLayers(people) {
-  const avatars = [];
+  const avatarGroups = new Map();
   const points = [];
   const arcs = [];
 
@@ -45,7 +45,11 @@ function buildLayers(people) {
     const ordered = orderedPoints(person);
 
     if (primary) {
-      avatars.push({ id: person.id, person, lat: primary.lat, lng: primary.lng, color });
+      // Regroupe les fiches d'un même lieu (~1 km) pour qu'aucune n'en cache une autre.
+      const key = `${primary.lat.toFixed(2)},${primary.lng.toFixed(2)}`;
+      let g = avatarGroups.get(key);
+      if (!g) { g = { lat: primary.lat, lng: primary.lng, people: [] }; avatarGroups.set(key, g); }
+      g.people.push(person);
     }
 
     // Points secondaires : tous sauf le point principal.
@@ -69,27 +73,34 @@ function buildLayers(people) {
       });
     }
   }
+  const avatars = [...avatarGroups.values()].map((g) => ({
+    id: g.people[0].id, lat: g.lat, lng: g.lng, people: g.people,
+  }));
   return { avatars, points, arcs };
 }
 
-function makePin(d, onClick) {
+function makePin(d, onClick, onCluster) {
+  const people = d.people;
+  const lead = people[0];
+  const cluster = people.length > 1;
   const el = document.createElement('div');
   el.className = 'globe-pin';
-  el.style.setProperty('--c', d.color);
-  const url = thumbUrl(d.person);
-  const initial = (d.person.name || '?').trim().charAt(0).toUpperCase() || '?';
+  el.style.setProperty('--c', safeColor(lead.color));
+  const url = thumbUrl(lead);
+  const initial = (lead.name || '?').trim().charAt(0).toUpperCase() || '?';
   el.innerHTML = `
     <div class="globe-pin__dot">
       <div class="globe-pin__img">${
         url ? `<img src="${esc(url)}" alt="">` : `<span>${esc(initial)}</span>`
       }</div>
+      ${cluster ? `<span class="globe-pin__count">${people.length}</span>` : ''}
       <span class="globe-pin__pulse"></span>
     </div>
-    <div class="globe-pin__label">${esc(d.person.name || 'Fiche')}</div>`;
-  el.title = d.person.name || 'Fiche';
+    <div class="globe-pin__label">${cluster ? esc(people.length + ' fiches ici') : esc(lead.name || 'Fiche')}</div>`;
+  el.title = cluster ? people.length + ' fiches à ce lieu' : (lead.name || 'Fiche');
   el.addEventListener('click', (e) => {
     e.stopPropagation();
-    onClick(d.id);
+    if (cluster) onCluster(people); else onClick(lead.id);
   });
   return el;
 }
@@ -98,7 +109,7 @@ function makePin(d, onClick) {
  * @param {HTMLElement} container
  * @param {{onPersonClick:(id:string)=>void, settings:object}} opts
  */
-export function initGlobe(container, { onPersonClick, settings }) {
+export function initGlobe(container, { onPersonClick, onClusterClick, settings }) {
   if (typeof window.Globe !== 'function') {
     container.innerHTML =
       '<div class="globe-error">Moteur de globe introuvable (vendor/globe.gl.min.js).</div>';
@@ -115,7 +126,7 @@ export function initGlobe(container, { onPersonClick, settings }) {
     // Avatars (pins photo)
     .htmlElementsData([])
     .htmlLat('lat').htmlLng('lng').htmlAltitude(0.012)
-    .htmlElement((d) => makePin(d, onPersonClick))
+    .htmlElement((d) => makePin(d, onPersonClick, onClusterClick))
     // Points secondaires
     .pointsData([])
     .pointLat('lat').pointLng('lng').pointColor('color')
