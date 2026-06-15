@@ -236,6 +236,22 @@ export async function demoteParam(key) {
   await updateSettings({ globalParams: gp });
 }
 
+/** Valeurs déjà saisies pour une clé de paramètre (les plus fréquentes d'abord). */
+export function paramValues(key) {
+  key = (key || '').trim();
+  if (!key) return [];
+  const counts = new Map();
+  for (const p of state.people) {
+    for (const f of p.fields || []) {
+      const v = (f.value || '').trim();
+      if ((f.key || '').trim() === key && v) counts.set(v, (counts.get(v) || 0) + 1);
+    }
+  }
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'fr'))
+    .map((e) => e[0]);
+}
+
 /** Rechargement complet (après import / sync). */
 export async function refreshFromDb() {
   await reloadPeople();

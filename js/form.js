@@ -245,7 +245,7 @@ export function renderForm(host) {
 
   function renderFields() {
     fieldsWrap.innerHTML = '';
-    fields.forEach((f) => {
+    fields.forEach((f, idx) => {
       const star = h('button', { type: 'button', class: 'btn btn--ghost mini star-btn' });
       const paintStar = () => {
         const on = store.isDefaultParam(f.key);
@@ -254,6 +254,12 @@ export function renderForm(host) {
         star.title = on
           ? 'Paramètre par défaut — clique pour le retirer de toutes les fiches'
           : 'Garder ce paramètre par défaut (présent sur toutes les fiches)';
+      };
+      // Suggestions de valeurs déjà saisies pour ce paramètre (remplissage rapide).
+      const valDL = h('datalist', { id: 'pv-' + idx });
+      const fillVals = () => {
+        valDL.innerHTML = '';
+        for (const v of store.paramValues(f.key)) valDL.appendChild(h('option', { value: v }));
       };
       star.addEventListener('click', async () => {
         const k = (f.key || '').trim();
@@ -264,12 +270,14 @@ export function renderForm(host) {
       });
       const keyInput = h('input', {
         type: 'text', list: 'paramKeysDL', value: f.key || '', placeholder: 'Paramètre (ex: taille)',
-        oninput: (e) => { f.key = e.target.value; paintStar(); },
+        oninput: (e) => { f.key = e.target.value; paintStar(); fillVals(); },
       });
       paintStar();
+      fillVals();
       fieldsWrap.appendChild(h('div', { class: 'kvrow' },
         keyInput,
-        h('input', { type: 'text', value: f.value || '', placeholder: 'Valeur', oninput: (e) => { f.value = e.target.value; } }),
+        h('input', { type: 'text', list: 'pv-' + idx, value: f.value || '', placeholder: 'Valeur', oninput: (e) => { f.value = e.target.value; } }),
+        valDL,
         star,
         h('button', {
           type: 'button', class: 'btn btn--ghost mini', title: 'Retirer cette ligne (de cette fiche)',
