@@ -231,26 +231,18 @@ export function renderForm(host) {
     onclick: () => { places.push({ _id: uid(), label: '', note: '' }); renderPlaces(); },
   }, '+ Ajouter un lieu');
 
-  // ── Paramètres personnalisés (clé/valeur) + réutilisables ──
+  // ── Paramètres personnalisés : schéma PARTAGÉ entre fiches, trié A→Z ──
   const fields = (draft.fields || []).map((f) => ({ ...f }));
+  // Affiche tous les paramètres connus (vides si non remplis) → un paramètre
+  // ajouté chez une fiche apparaît automatiquement sur toutes les autres.
+  const _present = new Set(fields.map((f) => (f.key || '').trim()).filter(Boolean));
+  for (const k of store.knownParamKeys()) if (!_present.has(k)) fields.push({ key: k, value: '' });
+  fields.sort((a, b) => (a.key || '').localeCompare(b.key || '', 'fr', { sensitivity: 'base' }));
+
   const fieldsWrap = h('div', { class: 'subfields' });
   const paramDL = h('datalist', { id: 'paramKeysDL' },
     ...store.knownParamKeys().map((k) => h('option', { value: k })));
-  const quickWrap = h('div', { class: 'chips quick-params' });
 
-  function renderQuick() {
-    quickWrap.innerHTML = '';
-    const used = new Set(fields.map((f) => (f.key || '').trim()).filter(Boolean));
-    const avail = store.knownParamKeys().filter((k) => !used.has(k));
-    if (!avail.length) {
-      quickWrap.appendChild(h('span', { class: 'hint' }, 'Astuce : clique l’étoile (☆ → ★) d’un paramètre pour le garder « par défaut » sur toutes les fiches.'));
-      return;
-    }
-    avail.forEach((k) => quickWrap.appendChild(h('button', {
-      type: 'button', class: 'chip chip--add',
-      onclick: () => { fields.push({ key: k, value: '' }); renderFields(); renderQuick(); },
-    }, '+ ' + k)));
-  }
   function renderFields() {
     fieldsWrap.innerHTML = '';
     fields.forEach((f) => {
@@ -260,21 +252,15 @@ export function renderForm(host) {
         star.textContent = on ? '★' : '☆';
         star.classList.toggle('is-on', on);
         star.title = on
-          ? 'Paramètre par défaut (réutilisable) — clique pour retirer'
-          : 'Rendre ce paramètre « par défaut » (réutilisable sur toutes les fiches)';
+          ? 'Paramètre par défaut — clique pour le retirer de toutes les fiches'
+          : 'Garder ce paramètre par défaut (présent sur toutes les fiches)';
       };
       star.addEventListener('click', async () => {
         const k = (f.key || '').trim();
         if (!k) { toast('Donne d’abord un nom au paramètre', 'err'); return; }
-        if (store.isDefaultParam(k)) {
-          await store.demoteParam(k);
-          toast('« ' + k + ' » retiré des paramètres par défaut', 'info');
-        } else {
-          await store.promoteParam(k);
-          toast('« ' + k + ' » ajouté aux paramètres par défaut', 'ok');
-        }
+        if (store.isDefaultParam(k)) await store.demoteParam(k);
+        else await store.promoteParam(k);
         paintStar();
-        renderQuick();
       });
       const keyInput = h('input', {
         type: 'text', list: 'paramKeysDL', value: f.key || '', placeholder: 'Paramètre (ex: taille)',
@@ -286,13 +272,12 @@ export function renderForm(host) {
         h('input', { type: 'text', value: f.value || '', placeholder: 'Valeur', oninput: (e) => { f.value = e.target.value; } }),
         star,
         h('button', {
-          type: 'button', class: 'btn btn--ghost mini',
-          onclick: () => { const i = fields.indexOf(f); if (i >= 0) fields.splice(i, 1); renderFields(); renderQuick(); },
+          type: 'button', class: 'btn btn--ghost mini', title: 'Retirer cette ligne (de cette fiche)',
+          onclick: () => { const i = fields.indexOf(f); if (i >= 0) fields.splice(i, 1); renderFields(); },
         }, '✕')));
     });
   }
   renderFields();
-  renderQuick();
   const addFieldBtn = h('button', {
     type: 'button', class: 'btn btn--ghost mini',
     onclick: () => { fields.push({ key: '', value: '' }); renderFields(); },
@@ -350,7 +335,9 @@ export function renderForm(host) {
       if (dropped.length) toast(`${dropped.length} lieu(x) ignoré(s) : coordonnées manquantes`, 'err');
       draft.places = places.filter(valid)
         .map((p) => ({ label: p.label || '', lat: Number(p.lat), lng: Number(p.lng), note: p.note || '' }));
-      draft.fields = fields.filter((f) => (f.key || '').trim() || (f.value || '').trim());
+      // On ne stocke que les paramètres réellement remplis (les vides sont
+      // ré-affichés automatiquement via le schéma partagé). Une valeur sans clé est ignorée.
+      draft.fields = fields.filter((f) => (f.key || '').trim() && (f.value || '').trim());
 
       // Photo
       try {
@@ -403,7 +390,9 @@ export function renderForm(host) {
 
     h('div', { class: 'field' },
       h('label', {}, 'Paramètres personnalisés'),
-      quickWrap, fieldsWrap, paramDL, addFieldBtn),
+      h('p', { class: 'hint', style: 'margin:-2px 0 8px' },
+        'Partagés entre toutes les fiches et triés A→Z. Un paramètre ajouté ici apparaît (vide) sur les autres fiches.'),
+      fieldsWrap, paramDL, addFieldBtn),
 
     h('div', { class: 'field' }, h('label', {}, 'Notes & souvenirs'), notesInput),
     h('div', { class: 'field' }, h('label', {}, 'Couleur sur le globe'), colorWrap),
